@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drzewo Genealogiczne z Modalem</title>
+    <style>
+        /* --- STYLE CSS DRZEWA --- */
+        * {
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .drzewo ul {
+            padding-top: 20px; 
+            position: relative;
+            transition: all 0.5s;
+            display: flex;
+            justify-content: center;
+        }
+
+        .drzewo li {
+            text-align: center;
+            list-style-type: none;
+            position: relative;
+            padding: 20px 10px 0 10px;
+            transition: all 0.5s;
+        }
+
+        /* Linie pionowe nad elementami */
+        .drzewo li::before, .drzewo li::after {
+            content: '';
+            position: absolute; 
+            top: 0; 
+            right: 50%;
+            border-top: 2px solid #ccc;
+            width: 50%; 
+            height: 20px;
+        }
+
+        .drzewo li::after {
+            right: auto; 
+            left: 50%;
+            border-left: 2px solid #ccc;
+        }
+
+        /* Usuwanie linii dla pojedynczych elementów */
+        .drzewo li:only-child::after, .drzewo li:only-child::before {
+            display: none;
+        }
+
+        .drzewo li:only-child {
+            padding-top: 0;
+        }
+
+        .drzewo li:first-child::before, .drzewo li:last-child::after {
+            border: 0;
+        }
+
+        .drzewo li:last-child::before {
+            border-right: 2px solid #ccc;
+            border-radius: 0 5px 0 0;
+        }
+
+        .drzewo li:first-child::after {
+            border-radius: 5px 0 0 0;
+        }
+
+        /* Linia pionowa łącząca rodzica w dół z listą dzieci */
+        .drzewo ul ul::before {
+            content: '';
+            position: absolute; 
+            top: 0; 
+            left: 50%;
+            border-left: 2px solid #ccc;
+            width: 0; 
+            height: 20px;
+        }
+
+        /* Bloki osób (przyciski) */
+        .drzewo .osoba {
+            border: 2px solid #ccc;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: #333;
+            display: inline-block;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+            font-weight: bold;
+        }
+
+        .drzewo .osoba span {
+            font-size: 0.85em;
+            color: #666;
+            display: block;
+            margin-top: 4px;
+            font-weight: normal;
+        }
+
+        /* Podświetlenia po najechaniu */
+        .drzewo .osoba:hover {
+            background: #e8f4f8;
+            border-color: #5bc0de;
+            transform: translateY(-2px);
+        }
+
+/* --- KOLORYSTYKA DLA MĘŻCZYZN (Pastelowy Niebieski) --- */
+.drzewo .osoba.mezczyzna {
+    background-color: #eef7fc;
+    border-color: #bce1f4;
+    color: #1d4e6d;
+}
+
+/* Efekt hover dla mężczyzn */
+.drzewo .osoba.mezczyzna:hover {
+    background-color: #d9eef9;
+    border-color: #79c3eb;
+}
+
+/* --- KOLORYSTYKA DLA KOBIET (Pastelowy Różowy) --- */
+.drzewo .osoba.kobieta {
+    background-color: #fceef3;
+    border-color: #f4bcd2;
+    color: #6d1d40;
+}
+
+/* Efekt hover dla kobiet */
+.drzewo .osoba.kobieta:hover {
+    background-color: #f9d9e6;
+    border-color: #eb79a8;
+}
+
+/* --- DOPASOWANIE WYSZUKIWARKI DO PŁCI (Opcjonalnie) --- */
+/* Jeśli chcesz, aby pulsująca ramka wyszukiwarki pasowała do koloru płci */
+.drzewo .osoba.mezczyzna.podswietlona-osoba {
+    animation: pulsowanieMezczyzna 2s infinite ease-in-out !important;
+}
+.drzewo .osoba.kobieta.podswietlona-osoba {
+    animation: pulsowanieKobieta 2s infinite ease-in-out !important;
+}
+
+@keyframes pulsowanieMezczyzna {
+    0% { box-shadow: 0 0 0 0 rgba(121, 195, 235, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(121, 195, 235, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(121, 195, 235, 0); }
+}
+
+@keyframes pulsowanieKobieta {
+    0% { box-shadow: 0 0 0 0 rgba(235, 121, 168, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(235, 121, 168, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(235, 121, 168, 0); }
+}
+
+
+
+        /* --- STYLE DLA OKIENKA MODALNEGO (POP-UP) --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 100; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: pokazModal 0.3s ease;
+        }
+
+        @keyframes pokazModal {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .modal-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 3px solid #5bc0de;
+            background-color: #eee; /* Tło zastępcze jeśli brak zdjęcia */
+        }
+
+        .modal-desc {
+            margin-top: 15px;
+            color: #555;
+            line-height: 1.6;
+        }
+/* --- zoom przyciski i ekran dotykowy ---- */
+
+/* Styl dla pływającego panelu sterowania */
+.zoom-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 50; /* Wyżej niż kafelki, ale niżej niż modal popup */
+}
+
+.zoom-controls button {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-controls button:hover {
+    background-color: #f0f0f0;
+    transform: scale(1.1);
+}
+
+.zoom-controls button:active {
+    transform: scale(0.95);
+}
+
+/* Zmiana kursora podczas przeciągania całego drzewa */
+#panzoom-container:active {
+    cursor: grabbing;
+}
+
+
+/* Styl kontenera wyszukiwarki */
+.search-container {
+    position: relative;
+    max-width: 350px;
+    margin: 10px auto 25px auto;
+    z-index: 60; /* Wyżej niż panel zoomu */
+}
+
+#family-search {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 16px;
+    border: 2px solid #ccc;
+    border-radius: 25px;
+    outline: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: all 0.3s;
+}
+
+#family-search:focus {
+    border-color: #5bc0de;
+    box-shadow: 0 4px 12px rgba(91, 192, 222, 0.2);
+}
+
+/* Rozwijana lista podpowiedzi */
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.search-item {
+    padding: 10px 20px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 0.95em;
+}
+
+.search-item:hover {
+    background-color: #e8f4f8;
+}
+
+/* Specjalna klasa dla znalezionej i wyśrodkowanej osoby (efekt błysku/pulsu) */
+.podswietlona-osoba {
+    animation: pulsowanie 2s infinite ease-in-out !important;
+    border-color: #5bc0de !important;
+    background-color: #e8f4f8 !important;
+    transform: scale(1.05);
+}
+
+@keyframes pulsowanie {
+    0% { box-shadow: 0 0 0 0 rgba(91, 192, 222, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(91, 192, 222, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(91, 192, 222, 0); }
+}
+
+
+
+
+/* --- RESPONSYWNOŚĆ (RWD) DLA EKRANÓW MOBILNYCH --- */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+
+    /* Resetowanie układu flex i float na pionowy */
+    .drzewo ul {
+        display: block;
+        padding-top: 0;
+    }
+
+    .drzewo li {
+        float: none;
+        display: block;
+        padding: 20px 0 0 0;
+    }
+
+    /* Ukrycie starych linii poziomych */
+    .drzewo li::before, 
+    .drzewo li::after,
+    .drzewo ul ul::before,
+    .drzewo li:last-child::before {
+        display: none !important;
+    }
+
+    /* Tworzenie nowej, pojedynczej linii pionowej łączącej pokolenia */
+    .drzewo li {
+        position: relative;
+    }
+
+    /* Linia nad każdym kafelkiem (pionowa) */
+    .drzewo li:not(:first-child)::before {
+        display: block !important;
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 20px;
+        border-top: none;
+        border-left: 2px solid #ccc;
+    }
+
+    /* Linia pod kafelkiem, który ma dzieci */
+    .drzewo li:has(ul)::after {
+        display: block !important;
+        content: '';
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 20px;
+        border-left: 2px solid #ccc;
+    }
+
+    /* Pełna szerokość kafelków na telefonie z zachowaniem marginesów */
+    .drzewo .osoba {
+        display: block;
+        max-width: 280px;
+        margin: 0 auto;
+        padding: 10px;
+        font-size: 0.95em;
+    }
+    
+    /* Dopasowanie okienka modalnego do mniejszych ekranów */
+    .modal-content {
+        width: 95%;
+        padding: 20px 15px;
+    }
+
+    .modal-img {
+        width: 90px;
+        height: 90px;
+    }
+}
+
+    </style>
+</head>
+<body>
+
+<!-- PANEL STEROWANIA ZOOMEM -->
+<div class="zoom-controls">
+    <button id="zoom-in" title="Przybliż">➕</button>
+    <button id="zoom-out" title="Oddal">➖</button>
+    <button id="zoom-reset" title="Resetuj widok">🔄</button>
+</div>
+
+<!-- DOŁĄCZENIE BIBLIOTEKI PANZOOM (Z CDN) -->
+<script src="https://unpkg.com"></script>
+
+<!-- Nowy kontener nadrzędny dla drzewa, który będzie obsługiwał przesuwanie -->
+<div id="panzoom-container" style="width: 100%; height: 80vh; overflow: hidden; cursor: grab;">
+
+
+<h1>Moje Drzewo Genealogiczne</h1>
+
+<!-- PASEK WYSZUKIWANIA -->
+<div class="search-container">
+    <input type="text" id="family-search" placeholder="Wpisz imię lub nazwisko..." autocomplete="off">
+    <div id="search-results" class="search-results-dropdown"></div>
+</div>
+
+
+<div class="drzewo">
+    <ul>
+        <li>
+            <!-- JA (Główny punkt wyjścia / najmłodsze pokolenie) -->
+            <div class="osoba kobieta" data-name="Ja (Jan Kowalski)" data-dates="Ur. 1995" data-desc="Autor tego drzewa genealogicznego. Interesuję się historią rodziny, programowaniem oraz fotografią." data-img="https://placeholder.com">
+                Ja<br><span>(1995)</span>
+            </div>
+		<div class="osoba" data-name="Brat: Tomasz Kowalski" data-dates="Ur. 1998" data-desc="Mój młodszy brat. Studiuje architekturę." data-img="https://placeholder.com">
+                Brat: Tomasz<br><span>(1998)</span>
+            </div>
+            
+            <!-- Rozgałęzienie na rodziców -->
+            <ul>
+                <!-- STRONA OJCA -->
+                <li>
+                    <div class="osoba mezczyzna" data-name="Ojciec: Marek Kowalski" data-dates="1965 - 2020" data-desc="Inżynier budownictwa, miłośnik majsterkowania i starych samochodów. Urodził się w Warszawie." data-img="https://placeholder.com">
+                        Ojciec: Marek<br><span>(1965-2020)</span>
+                    </div>
+                    <ul>
+                        <li>
+                            <div class="osoba" data-name="Dziadek: Antoni Kowalski" data-dates="1935 - 2010" data-desc="Dziadek od strony ojca. Z zawodu był nauczycielem historii." data-img="https://placeholder.com">
+                                Dziadek: Antoni
+                            </div>
+                        </li>
+                        <li>
+                            <div class="osoba" data-name="Babcia: Maria Kowalska" data-dates="1938 - 2015" data-desc="Babcia od strony ojca. Prowadziła własną rodzinną piekarnię." data-img="https://placeholder.com">
+                                Babcia: Maria
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- STRONA MATKI -->
+                <li>
+                    <div class="osoba" data-name="Matka: Anna Nowak (Kowalska)" data-dates="Ur. 1968" data-desc="Lekarka pediatra, uwielbia podróże górskie oraz literaturę piękną." data-img="https://placeholder.com">
+                        Matka: Anna<br><span>(1968)</span>
+                    </div>
+                    <ul>
+                        <li>
+                            <div class="osoba" data-name="Dziadek: Stefan Nowak" data-dates="1940 - 2018" data-desc="Dziadek od strony matki. Pracował jako leśnik, kochał przyrodę." data-img="https://placeholder.com">
+                                Dziadek: Stefan
+                            </div>
+                        </li>
+                        <li>
+                            <div class="osoba" data-name="Babcia: Barbara Nowak" data-dates="Ur. 1943" data-desc="Babcia od strony matki. Emerytowana księgowa, pasjonatka ogrodnictwa." data-img="https://placeholder.com">
+                                Babcia: Barbara
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+
+<!-- TWÓJ BRAT / SIOSTRA (dodani jako kolejny element li) -->
+        <li>
+            <div class="osoba" data-name="Brat: Tomasz Kowalski" data-dates="Ur. 1998" data-desc="Mój młodszy brat. Studiuje architekturę." data-img="https://placeholder.com">
+                Brat: Tomasz<br><span>(1998)</span>
+            </div>
+            <!-- Jeśli brat ma dzieci, tutaj otwierasz nowe <ul>. Jeśli nie, zostawiasz czysty tag </li> -->
+        </li>
+
+        </li>
+    </ul>
+</div>
+
+<!-- STRUKTURA OKIENKA MODALNEGO -->
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <img id="modalImg" class="modal-img" src="" alt="Zdjęcie członka rodziny">
+        <h2 id="modalName">Imię Nazwisko</h2>
+        <h4 id="modalDates" style="color: #888; margin-top: 5px;">Lata życia</h4>
+        <p id="modalDesc" class="modal-desc">Opis postaci...</p>
+    </div>
+</div>
+
+<script>
+    // --- SKRYPT JAVASCRIPT ---
+    const modal = document.getElementById("myModal");
+    const closeBtn = document.querySelector(".close");
+    
+    const modalName = document.getElementById("modalName");
+    const modalDates = document.getElementById("modalDates");
+    const modalDesc = document.getElementById("modalDesc");
+    const modalImg = document.getElementById("modalImg");
+
+    // Pobierz wszystkie kafelki osób i dodaj zdarzenie kliknięcia
+    document.querySelectorAll('.drzewo .osoba').forEach(item => {
+        item.addEventListener('click', function() {
+            // Pobieranie danych z atrybutów "data-" klikniętego elementu
+            modalName.innerText = this.getAttribute('data-name');
+            modalDates.innerText = this.getAttribute('data-dates');
+            modalDesc.innerText = this.getAttribute('data-desc');
+            modalImg.src = this.getAttribute('data-img');
+            
+            // Pokazanie modala
+            modal.style.display = "flex";
+        });
+    });
+
+    // Zamknięcie po kliknięciu w "X"
+    closeBtn.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    // Zamknięcie po kliknięciu poza obszar okienka
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+
+// --- SKRYPT OBSŁUGI ZOOM I PAN ---
+const elem = document.getElementById('panzoom-container');
+
+// Inicjalizacja biblioteki Panzoom z ograniczeniami skali
+const panzoom = Panzoom(elem, {
+    maxScale: 3,     // Maksymalne potrójne przybliżenie
+    minScale: 0.3,   // Maksymalne pomniejszenie do 30% wielkości
+    contain: 'outside', // Zapobiega całkowitemu uciekaniu drzewa poza ekran
+    step: 0.2        // Skok przybliżenia przy jednym kliknięciu
+});
+
+// Włączenie obsługi przybliżania za pomocą kółka myszy (Scroll)
+elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel);
+
+// Podpięcie zdarzeń pod przyciski interfejsu
+document.getElementById('zoom-in').addEventListener('click', panzoom.zoomIn);
+document.getElementById('zoom-out').addEventListener('click', panzoom.zoomOut);
+document.getElementById('zoom-reset').addEventListener('click', () => {
+    panzoom.reset();
+});
+
+
+// --- SKRYPT WYSZUKIWARKI I CENTROWANIA ---
+const searchInput = document.getElementById('family-search');
+const searchResults = document.getElementById('search-results');
+
+// Funkcja obsługująca wpisywanie tekstu
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    searchResults.innerHTML = '';
+    
+    if (query.length < 1) {
+        searchResults.style.display = 'none';
+        return;
+    }
+
+    // Pobierz wszystkich członków rodziny na podstawie atrybutu data-name
+    const osoby = document.querySelectorAll('.drzewo .osoba');
+    let znaleziono = false;
+
+    osoby.forEach((osoba, index) => {
+        const name = osoba.getAttribute('data-name').toLowerCase();
+        
+        if (name.includes(query)) {
+            znaleziono = true;
+            const item = document.createElement('div');
+            item.className = 'search-item';
+            item.innerText = osoba.getAttribute('data-name');
+            
+            // Kliknięcie w podpowiedź z listy
+            item.addEventListener('click', () => {
+                searchInput.value = osoba.getAttribute('data-name');
+                searchResults.style.display = 'none';
+                wypozycjonujNaOsobie(osoba);
+            });
+            
+            searchResults.appendChild(item);
+        }
+    });
+
+    searchResults.style.display = znaleziono ? 'block' : 'none';
+});
+
+// Zamknij listę podpowiedzi przy kliknięciu poza wyszukiwarkę
+document.addEventListener('click', function(e) {
+    if (e.target !== searchInput && e.target !== searchResults) {
+        searchResults.style.display = 'none';
+    }
+});
+
+// GŁÓWNA FUNKCJA: Wyśrodkowanie widoku na kafelku
+function wypozycjonujNaOsobie(targetElem) {
+    // 1. Usuń poprzednie podświetlenia
+    document.querySelectorAll('.drzewo .osoba').forEach(o => o.classList.remove('podswietlona-osoba'));
+    
+    // 2. Dodaj efekt pulsowania do nowo wybranej osoby
+    targetElem.classList.add('podswietlona-osoba');
+    
+    // 3. Reset skali do poziomu 1:1, aby obliczenia były dokładne, a widok czytelny
+    panzoom.zoom(1, { animate: true });
+
+    setTimeout(() => {
+        // Kontener główny (okno widokowe) oraz element przesuwany (drzewo)
+        const container = document.getElementById('panzoom-container');
+        const treeRect = elem.getBoundingClientRect(); 
+        const targetRect = targetElem.getBoundingClientRect();
+        
+        // Obliczenie przesunięcia X i Y tak, aby kafelek znalazł się dokładnie na środku okna
+        const x = (container.clientWidth / 2) - (targetRect.left - treeRect.left) - (targetElem.offsetWidth / 2);
+        const y = (container.clientHeight / 2) - (targetRect.top - treeRect.top) - (targetElem.offsetHeight / 2);
+        
+        // Wykonanie płynnego ruchu za pomocą biblioteki Panzoom
+        panzoom.pan(x, y, { animate: true, duration: 500 });
+    }, 200); // Małe opóźnienie, aby Panzoom zdążył zresetować skalę przed przesunięciem
+}
+
+
+</script>
+
+</body>
+</html>
